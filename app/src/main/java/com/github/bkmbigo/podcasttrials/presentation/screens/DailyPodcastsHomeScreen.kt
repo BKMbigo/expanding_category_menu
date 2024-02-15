@@ -464,8 +464,7 @@ private fun HottestSongItem(
             fontSize = 18.sp,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-                .basicMarquee(),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             fontWeight = FontWeight.Bold,
             fontFamily = andikaFontFamily
         )
