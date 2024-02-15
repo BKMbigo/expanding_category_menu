@@ -648,16 +648,12 @@ private fun SidePanelActionCustomLayout(
                 val tabMeasuredWidth = tabPlaceables.maxOf { it.width }
 
                 coroutineScope.launch {
-                    val pillHeight = tabs[currentCategory.ordinal]
-                        .maxIntrinsicWidth(constraints.maxHeight)
-                        .toFloat()
-
                     pillSize = Size(
                         width = tabMeasuredWidth.toFloat() * 3 / 4,
-                        height = pillHeight
+                        height = tabMeasuredWidth.toFloat()
                     )
 
-                    pillTopLeft.animateTo(currentCategory.ordinal * tabMinWidth.toFloat() + (tabMinWidth - pillHeight) / 2)
+                    pillTopLeft.animateTo(currentCategory.ordinal * tabMinWidth.toFloat())
                 }
 
 
