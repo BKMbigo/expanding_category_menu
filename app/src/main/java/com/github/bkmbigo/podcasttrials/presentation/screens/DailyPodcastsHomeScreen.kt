@@ -18,12 +18,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
@@ -44,9 +49,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -72,6 +80,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
@@ -115,12 +124,13 @@ private fun DailyPodcastHomeScreenContent(
 
     Surface(
         modifier = modifier
+            .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
 
         DailyPodcastHomeGeneralLayout(
             modifier = Modifier
                 .fillMaxSize(),
-            toggleButton = { onCategoryChanged ->
+            toggleButton = { onCategoryChanged, _ ->
                 IconButton(
                     onClick = { onCategoryChanged() }
                 ) {
@@ -157,7 +167,7 @@ private fun DailyPodcastHomeScreenContent(
                     }
                 }
             },
-            sidePanel = { homeCategory: HomeCategory, onCategoryChanged: (HomeCategory) -> Unit ->
+            sidePanel = { homeCategory: HomeCategory, onCategoryChanged: (HomeCategory) -> Unit, _ ->
                 SidePanelActionCustomLayout(
                     currentCategory = homeCategory,
                     onCategoryChanged = onCategoryChanged,
@@ -171,7 +181,7 @@ private fun DailyPodcastHomeScreenContent(
                             else
                                 size.width
 
-                            val endX = if(!isRtl)
+                            val endX = if (!isRtl)
                                 size.width
                             else
                                 0f
@@ -195,15 +205,15 @@ private fun DailyPodcastHomeScreenContent(
                             drawPath(
                                 path = Path().apply {
                                     moveTo(endX, size.height - 16f)
-                                    lineTo(endX, size.height + 48f)
+                                    lineTo(endX, size.height + 32f)
 
                                     cubicTo(
                                         x1 = point1X,
-                                        y1 = size.height + 130f,
+                                        y1 = size.height + 80f,
                                         x2 = point2X,
-                                        y2 = size.height + 28f,
+                                        y2 = size.height + 20f,
                                         x3 = startX,
-                                        y3 = size.height + 150f
+                                        y3 = size.height + 120f
                                     )
                                     lineTo(startX, size.height - 16f)
                                     lineTo(endX, size.height - 16f)
@@ -213,7 +223,7 @@ private fun DailyPodcastHomeScreenContent(
                         }
                 )
             },
-            content = { homeCategory ->
+            content = { homeCategory, _ ->
                 DailyPodcastsContent(
                     modifier = Modifier
                         .fillMaxSize()
@@ -233,13 +243,16 @@ private fun DailyPodcastsContent(
     Column(
         modifier = modifier
     ) {
+        var searchText by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(TextFieldValue(""))
+        }
 
         Spacer(modifier = Modifier.height(2.dp))
 
         OutlinedTextField(
-            value = "",
+            value = searchText,
             onValueChange = {
-
+                searchText = it
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -281,7 +294,7 @@ private fun DailyPodcastsContent(
             LaunchedEffect(Unit) {
                 //  TODO: Handle case where user is already scrolling
                 delay(5000)
-                if(isActive) {
+                if (isActive) {
                     if (pagerState.canScrollForward) {
                         pagerState.animateScrollToPage(pagerState.currentPage + 1)
                     } else {
@@ -413,7 +426,6 @@ private fun DailyPodcastsContent(
 }
 
 
-
 @OptIn(ExperimentalFoundationApi::class)
 @NonRestartableComposable
 @Composable
@@ -484,7 +496,7 @@ private fun SidePanelActionCustomLayout(
 
                         val isRtl = configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
 
-                        val rtlWidthFactor = if(isRtl)
+                        val rtlWidthFactor = if (isRtl)
                             (size.width - pillSize.width)
                         else
                             0f
@@ -636,11 +648,16 @@ private fun SidePanelActionCustomLayout(
                 val tabMeasuredWidth = tabPlaceables.maxOf { it.width }
 
                 coroutineScope.launch {
+                    val pillHeight = tabs[currentCategory.ordinal]
+                        .maxIntrinsicWidth(constraints.maxHeight)
+                        .toFloat()
+
                     pillSize = Size(
-                        width = constraints.maxWidth.toFloat() * 3 / 4,
-                        height = constraints.maxWidth.toFloat()
+                        width = tabMeasuredWidth.toFloat() * 3 / 4,
+                        height = pillHeight
                     )
-                    pillTopLeft.animateTo(currentCategory.ordinal * tabMinWidth.toFloat())
+
+                    pillTopLeft.animateTo(currentCategory.ordinal * tabMinWidth.toFloat() + (tabMinWidth - pillHeight) / 2)
                 }
 
 
@@ -673,15 +690,18 @@ private fun SidePanelActionCustomLayout(
 private fun DailyPodcastHomeGeneralLayout(
     modifier: Modifier = Modifier,
     toggleButton: @Composable (
-        onToggleSidePanel: () -> Unit
+        onToggleSidePanel: () -> Unit,
+        modifier: Modifier
     ) -> Unit,
     topRow: @Composable () -> Unit,
     sidePanel: @Composable (
         currentCategory: HomeCategory,
-        onCurrentCategoryChanged: (HomeCategory) -> Unit
+        onCurrentCategoryChanged: (HomeCategory) -> Unit,
+        modifier: Modifier
     ) -> Unit,
     content: @Composable (
-        currentCategory: HomeCategory
+        currentCategory: HomeCategory,
+        modifier: Modifier
     ) -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -694,10 +714,13 @@ private fun DailyPodcastHomeGeneralLayout(
 
     val sidePanelMaxWidth = remember { Animatable(0f) }
 
+    // TODO: find means to query for height
+    var topStatusBarHeight by remember { mutableFloatStateOf(0f) }
+
     Layout(
         content = {
             toggleButton(
-                onToggleSidePanel = {
+                /* onToggleSidePanel = */ {
                     coroutineScope.launch {
                         if (!isSidePanelOpen) {
                             sidePanelMaxWidth.animateTo(0f, tween(800, easing = EaseInQuart))
@@ -707,54 +730,75 @@ private fun DailyPodcastHomeGeneralLayout(
                     }
 
                     isSidePanelOpen = !isSidePanelOpen
-                }
+                },
+                /* modifier = */ Modifier
             )
 
             topRow()
 
+            // Top Content Spacer --> The Spacer is not measured nor displayed. Only used to query for height
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+
+
+            // Top Content Curve
             Box(
                 modifier = Modifier
                     .drawBehind {
                         val isRtl = configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
 
+                        val pillRoundedSize = 30f
+
                         val startX = if (!isRtl)
+                            0f
+                        else
+                            size.width
+
+                        val contentEndX = if (!isRtl)
                             size.width
                         else
                             0f
 
                         val endX = if (!isRtl)
-                            size.width + 80f
+                            size.width * 1.8f
                         else
-                            -80f
-
-                        drawRect(
-                            color = colorScheme.primaryContainer
-                        )
+                            -(size.width * 0.8f)
 
                         drawPath(
                             path = Path().apply {
-                                moveTo(
-                                    x = startX,
-                                    y = 0f
-                                )
-                                lineTo(
-                                    x = startX,
-                                    y = size.height
-                                )
+                                moveTo(startX, 0f)
+                                lineTo(startX, size.height + topStatusBarHeight)
+                                lineTo(contentEndX, size.height + topStatusBarHeight)
+
+                                lineTo(contentEndX, topStatusBarHeight + pillRoundedSize)
+
                                 quadraticBezierTo(
-                                    x1 = if (!isRtl) {
-                                        startX - 30f
-                                    } else {
-                                        startX + 30f
-                                    },
-                                    y1 = -10f,
-                                    x2 = endX,
-                                    y2 = 0f
+                                    x1 = contentEndX,
+                                    y1 = topStatusBarHeight,
+                                    x2 = if (!isRtl)
+                                        contentEndX + pillRoundedSize
+                                    else
+                                        contentEndX - pillRoundedSize,
+                                    y2 = topStatusBarHeight
                                 )
+
                                 lineTo(
-                                    x = startX,
-                                    y = 0f
+                                    if (!isRtl)
+                                        endX - pillRoundedSize
+                                    else
+                                        endX + pillRoundedSize,
+                                    topStatusBarHeight
                                 )
+
+                                quadraticBezierTo(
+                                    x1 = endX,
+                                    y1 = topStatusBarHeight,
+                                    x2 = endX,
+                                    y2 = topStatusBarHeight - pillRoundedSize
+                                )
+
+                                lineTo(endX, 0f)
+
+                                lineTo(startX, 0f)
                             },
                             color = colorScheme.primaryContainer
                         )
@@ -762,14 +806,16 @@ private fun DailyPodcastHomeGeneralLayout(
             )
 
             sidePanel(
-                currentCategory = currentCategory,
-                onCurrentCategoryChanged = {
+                /* currentCategory = */ currentCategory,
+                /* onCurrentCategoryChanged = */ {
                     currentCategory = it
-                }
+                },
+                /* modifier = */ Modifier
             )
 
             content(
-                currentCategory = currentCategory
+                /*currentCategory = */ currentCategory,
+                /* modifier = */ Modifier
             )
         },
         modifier = modifier
@@ -777,9 +823,7 @@ private fun DailyPodcastHomeGeneralLayout(
 
         val toggleButtonPlaceable = measurables[0].measure(Constraints())
 
-
-
-        val sidePanelIntrinsicWidth = measurables[3].maxIntrinsicWidth(constraints.maxHeight)
+        val sidePanelIntrinsicWidth = measurables[4].maxIntrinsicWidth(constraints.maxHeight)
 
         val measuredSidePanelWidth = (sidePanelIntrinsicWidth * sidePanelMaxWidth.value).toInt()
 
@@ -789,20 +833,25 @@ private fun DailyPodcastHomeGeneralLayout(
             )
         )
 
-        val sidePanelTopPlaceable = measurables[2].measure(
+        val sidePanelTopPlaceable = measurables[3].measure(
             Constraints.fixed(
                 width = measuredSidePanelWidth,
                 height = topRowPlaceable.height
             )
         )
 
-        val sidePanelPlaceable = measurables[3].measure(
+        val topStatusBarPlaceable = measurables[2].maxIntrinsicHeight(constraints.maxWidth)
+
+        // Update topStatusBarHeight
+        topStatusBarHeight = topStatusBarPlaceable.toFloat()
+
+        val sidePanelPlaceable = measurables[4].measure(
             constraints = Constraints.fixedWidth(
                 width = measuredSidePanelWidth
             )
         )
 
-        val contentPlaceable = measurables[4].measure(
+        val contentPlaceable = measurables[5].measure(
             constraints = Constraints.fixed(
                 width = constraints.maxWidth - measuredSidePanelWidth,
                 height = constraints.maxHeight - topRowPlaceable.height
@@ -813,7 +862,7 @@ private fun DailyPodcastHomeGeneralLayout(
             // Place content behind
             contentPlaceable.placeRelative(
                 x = measuredSidePanelWidth,
-                y = topRowPlaceable.height
+                y = topStatusBarPlaceable + topRowPlaceable.height
             )
 
             // Place side panel
@@ -825,19 +874,19 @@ private fun DailyPodcastHomeGeneralLayout(
 
                 sidePanelPlaceable.placeRelative(
                     x = 0,
-                    y = topRowPlaceable.height
+                    y = topStatusBarPlaceable + topRowPlaceable.height
                 )
             }
 
             // Place Toggle Icon
             toggleButtonPlaceable.placeRelative(
                 x = (sidePanelIntrinsicWidth / 2) - (toggleButtonPlaceable.width / 2),
-                y = (topRowPlaceable.height - toggleButtonPlaceable.height) / 2
+                y = topStatusBarPlaceable + (topRowPlaceable.height - toggleButtonPlaceable.height) / 2
             )
 
             topRowPlaceable.placeRelative(
                 x = sidePanelIntrinsicWidth,
-                y = 0
+                y = topStatusBarPlaceable
             )
         }
     }
